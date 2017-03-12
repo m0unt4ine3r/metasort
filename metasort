@@ -1,0 +1,301 @@
+#!/usr/bin/env python3
+
+#Metadata based sorting script (WIP) by Anthony Roebuck III
+
+#Additions:
+#Still needs to check if the 4 tags are already there, if not then skip; needs part to add original auth; add file input capability; add option to sort into genre dirs; add option to specify dir to sort to; maybe add file recursion; add select ability to select amount at a time; have sorter check thru artist string for '&' as a cutoff; add title parser for metachange to reduce tedium 
+
+#Notes to self:
+#Specifying songs doesnt work properly
+#Consider changing paths to Artists/... and Genres/... (or something else) for clutter reduction or move soundboard and unprocced folder elswhere
+#Songs from phone dont have id3 tags?
+
+######################################################################################################
+#Imports and globals
+
+import re, argparse
+from os import chdir, environ, getcwd
+from glob import glob
+from subprocess import call, DEVNULL, check_output
+from codecs import decode
+from os.path import exists, isdir, isfile, join, split
+
+#Default paths for files to sort (source) and location to create directories (dest):
+source=join(environ['HOME'], "Music", "Unprocced")
+dest=join(environ['HOME'], "Music")
+
+######################################################################################################
+#Main functions:
+
+############################# 
+#Quasi-interactive id3v2 CLI: *maybe add code for filename parsing here
+
+def metachange(files, numfiles, specific=False, target=source, verb=1):
+	if specific:													#for manual file input
+		num = numfiles[0]
+		numfiles = numfiles[1]
+	else:
+		num = 1
+
+	chdir(target)
+
+	for song in files:
+#		call("clear")
+		print("Enter the metadata for: {} below ({}/{}):".format(song, num, numfiles))
+
+		title=""
+		while title == "":
+			title = capitalize(input("Title: "))
+			if title == "":
+				print("Title cannot be blank!")
+		artist = capitalize(input("Artist: "))
+		if artist == "":
+			artist = "Unknown"
+		genre = capitalize(input("Genre: "))
+		if genre == "":
+			genre = "Unknown"
+		album = capitalize(input("Album: "))
+		if album == "":
+			album = "Unknown"
+		
+		#needs revision for cases where tags exist; also make tag wipe optional
+		call(["id3v2", '-D', song])
+		call(["id3v2", '-t', title, '-a', artist, '-g', genre, '-A', album, song])
+		num += 1
+
+#######################
+#Metadata based sorter: *needs more for man input case
+
+def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=1):
+	chdir(destdir)
+
+	if specific:													#when using specific
+		num = numfiles[0]
+		numfiles = numfiles[1]
+	else:
+		num = 1
+
+#	call("clear")
+	for song in files:
+		data = getdata(join(srcdir, song), verb=verb)
+		path = join(data[1], data[3])
+		title = data[0] + ".mp3"
+
+		if verb >= 2:														#verbosity
+			print("Copying {} as {} to {} ({}/{})...".format(song, title, path, num, numfiles))
+
+		call(["mkdir", '-p', path], stderr=DEVNULL)
+		call(["cp", '-i', join(source, song), join(path, title)])
+		num += 1
+
+	if verb >= 1:															#verbosity
+		print("Done sorting {} file(s).".format(numfiles))
+	fin = input("Delete originals now? [y/N]: ")
+	if fin == "y":
+		for song in files:
+			call(["rm", join(split(srcdir)[1], song)])					
+
+######################################################################################################
+#Secondary functions:
+
+########################################
+#For more reliable title capitalization:
+
+def capitalize(s):
+	return re.sub(r"[A-Za-z]+('[A-Za-z]+)?", 
+				lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), s)
+
+################################
+#Grabs tags and returns as list: *improve checking method so only needed values are checked; maybe make counter to show how many are filtered out
+
+def getdata(song, verb=1):
+	output = decode(check_output(["id3v2", '-R', song]))			#might need to change
+	data = []
+	count = 1
+
+	for char in output:									#compare to list-dl's imp of parser
+		if char == ':':
+			i = count+1
+			temp = output[i]
+			while output[i+1] != '\n':
+				i += 1
+				temp += output[i]
+			data.append(temp)
+		count += 1
+
+	if len(data) >= 5:
+		if verb >= 3:														#verbosity
+			print("Metadata for", split(song)[1] + ':',
+				 "\n	Title:", data[1],
+				 "\n	Author:", data[2],
+				 "\n	Album:", data[4],
+				 "\n	Genre:", data[3])
+
+		return data[1], data[2], data[3], data[4]
+
+	else:
+		return 0
+
+#############################################
+#Checks to see if song has existing metadata (WIP):
+
+#def datachecker(files, srcdir=source):
+#	data = ""
+#
+#	for song in files:
+#		data = getdata(join(srcdir, song))
+#
+#	return data
+
+######################################################################################################
+#Script behavior:
+
+#args: -s sort only; -c change only; -l input from list; -f only use specific files; -n return number of files without at least 4 tags; --source=source execute with different source directory; --dest=dest execute with different destination dir
+
+if __name__ == "__main__":
+	import sys
+	parser = argparse.ArgumentParser(description="Metadata based music sorter.", epilog="Defaults can be manually changend in the script's code.")
+
+	#Main arg:
+	parser.add_argument("songs", metavar="song.mp3", nargs='*', help="can specify individual files to be used, else all files in source directory are used")
+
+	#Xor args: 
+	group = parser.add_mutually_exclusive_group()
+	group.add_argument('-a', '--changeandsort', action="store_true", default=False, help="runs metadat changer, sorts files, and exits")
+	group.add_argument('-c', '--changeonly', action="store_true", default=False, help="runs metadata changer and exits")
+	group.add_argument('-n', '--numunsorted', action="store_true", default=False, help="counts files and exits")
+	group.add_argument('-D', '--debug', action="store_true", default=False, help="for testing purposes") 
+
+	#Or args:
+#	parser.add_argument('-l', metavar="list.txt", help="input from list")			#no list io yet
+
+	#Long args:
+	parser.add_argument('--source', metavar="dir", nargs=1, help="use different source directory; default={}".format(source))
+	parser.add_argument('--dest', metavar="dir", nargs=1, help="use different destination directory; default={}".format(dest))
+
+	#Verbosity:
+	noise = parser.add_mutually_exclusive_group()
+	noise.add_argument('-v', '--verbose', action="count", default=1, help="increase output verbosity")
+	noise.add_argument('-q', '--quiet', action="store_true", help="decrease output verbosity")
+
+	#Collect args:
+	args = parser.parse_args()
+
+	#Handling verbosity:
+	if args.verbose >= 2:
+		verbosity = 3
+	elif args.verbose == 1:
+		verbosity = 2
+	elif args.quiet:
+		verbosity = 0
+	else:
+		verbosity = 1
+
+	#Handling long args: *maybe make into function
+	if args.source != None:
+		for elem in args.source:
+			source = elem
+			if not isdir(source):
+				sys.exit("Directory does not exist: {}".format(source))
+	if args.dest != None:
+		for elem in args.dest:
+			dest = elem
+			if not isdir(dest):
+				sys.exit("Directory does not exist: {}".format(dest))
+
+	#Handling Xors: *not really necessary
+#	changensort = args.changeandsort
+#	changeonly = args.changeonly
+
+	#Setting environ/variables
+	chdir(source)
+	songs = glob("*.mp3")
+	numsongs = len(songs)
+
+	#Checking/validation:
+	for elem in args.songs:											#when using specific
+		if not isfile(elem):
+			sys.exit("File does not exist: {}".format(elem))
+
+#Calling functions:
+
+	##For full processing:					*needs way to validate specified songs given as args
+	if args.changeandsort:										#validation for changensort
+		if args.songs != []:#for full processing of specific files *consider making into a function
+			snum = 1			
+			for elem in args.songs:
+				altsrc = split(join(environ['PWD'], elem))[0]
+				song = split(join(environ['PWD'], elem))[1]
+				metachange([song], [snum, len(args.songs)], specific=True, target=altsrc, verb=verbosity)
+				snum += 1
+
+		else:
+			metachange(songs, numsongs, specific=False, target=source, verb=verbosity)
+			metasort(songs, numsongs, specific=False, srcdir=source, destdir=dest, verb=verbosity)
+
+	#Only change:
+#	elif args.changeonly:
+#		print("C only")
+
+	#Only return amount:
+	elif args.numunsorted:
+		print("Number of songs in default source ({}): {}.".format(split(source)[1], numsongs))
+
+	#Debugging/Testing new functions:
+	elif args.debug:
+		print(datachecker(songs))
+
+	#Sort:
+	else:						#*needs way to validate specified songs given as args too?
+		i = 0
+		while i < numsongs:
+			if getdata(songs[i], verb=1) == 0:
+				songs.remove(songs[i])
+				i -= 1
+				numsongs -= 1
+			i += 1
+
+		metasort(songs, numsongs, specific=False, srcdir=source, destdir=dest, verb=verbosity)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

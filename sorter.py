@@ -1,7 +1,14 @@
+import songclass, secondary
+from os import chdir, environ, getcwd
+from glob import glob
+from subprocess import call, DEVNULL, check_output
+from codecs import decode
+from os.path import exists, isdir, isfile, join, split
+
 #######################
 #Metadata based sorter: *needs more for man input case
 
-def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=1):
+def metasort(files, numfiles, specific=False, srcdir="", destdir="", verb=1):
 	chdir(destdir)
 
 	if specific:													#when using specific
@@ -12,7 +19,7 @@ def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=
 
 #	call("clear")
 	for song in files:
-		data = getdata(join(srcdir, song), verb=verb)
+		data = secondary.getdata(join(srcdir, song), verb=verb)
 		path = join(data[1], data[3])
 		title = data[0] + ".mp3"
 
@@ -20,7 +27,7 @@ def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=
 			print("Copying {} as {} to {} ({}/{})...".format(song, title, path, num, numfiles))
 
 		call(["mkdir", '-p', path], stderr=DEVNULL)
-		call(["cp", '-i', join(source, song), join(path, title)])
+		call(["cp", '-i', join(srcdir, song), join(path, title)])
 		num += 1
 
 	if verb >= 1:															#verbosity

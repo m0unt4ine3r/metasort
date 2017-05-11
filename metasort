@@ -14,7 +14,9 @@
 ######################################################################################################
 #Imports and globals
 
-import re, argparse, songclass
+import re, argparse, songclass, secondary
+from sorter import metasort
+from changer import metachange
 from os import chdir, environ, getcwd
 from glob import glob
 from subprocess import call, DEVNULL, check_output
@@ -24,122 +26,6 @@ from os.path import exists, isdir, isfile, join, split
 #Default paths for files to sort (source) and location to create directories (dest):
 source=join(environ['HOME'], "Music", "Unprocced")
 dest=join(environ['HOME'], "Music")
-
-######################################################################################################
-#Main functions:
-
-############################# 
-#Quasi-interactive id3v2 CLI: *maybe add code for filename parsing here
-
-#make input one line w/ delim
-def metachange(files, numfiles, specific=False, target=source, verb=1):
-	if specific:													#for manual file input
-		num = numfiles[0]
-		numfiles = numfiles[1]
-	else:
-		num = 1
-
-	chdir(target)																				  #change back to original directory when done for convenience?
-
-	data = []
-	string = ""
-	for song in files:
-#		call("clear")
-		print("Enter the metadata for {} below ({}/{}) (Format: title/album/artist/genre; leave blank to continue):".format(song, num, numfiles))
-		
-		for frame in getdata(song):
-			data.append(frame)
-		
-		print("Current frames: {}/{}/{}/{}".format(data[0], data[1], data[2], data[3]))
-		
-		#loop here for input confirmation (maybe)
-		newdata = input("New frames: ")
-		string = ""
-		count = 0
-			
-		for char in newdata:
-			if char == '/':
-				data[count] = string
-				count += 1
-				string = ""
-			else:
-				string += char
-		
-		#needs revision for cases where tags exist; also make tag wipe optional
-		# call(["id3v2", '-D', song])
-		call(["id3v2", '-t', data[0], '-A', data[1], '-a', data[2], '-g', data[3], song])
-		data = []
-		num += 1
-
-#######################
-#Metadata based sorter: *needs more for man input case
-
-def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=1):
-	chdir(destdir)
-
-	if specific:													#when using specific
-		num = numfiles[0]
-		numfiles = numfiles[1]
-	else:
-		num = 1
-
-#	call("clear")
-	for song in files:
-		data = getdata(join(srcdir, song), verb=verb)
-		path = join(data[1], data[3])
-		title = data[0] + ".mp3"
-
-		if verb >= 2:														#verbosity
-			print("Copying {} as {} to {} ({}/{})...".format(song, title, path, num, numfiles))
-
-		call(["mkdir", '-p', path], stderr=DEVNULL)
-		call(["cp", '-i', join(source, song), join(path, title)])
-		num += 1
-
-	if verb >= 1:															#verbosity
-		print("Done sorting {} file(s).".format(numfiles))
-	fin = input("Delete originals now? [y/N]: ")
-	if fin == "y":
-		for song in files:
-			call(["rm", join(split(srcdir)[1], song)])					
-
-######################################################################################################
-#Secondary functions:
-
-########################################
-#For more reliable title capitalization:
-
-def capitalize(s):
-	return re.sub(r"[A-Za-z]+('[A-Za-z]+)?", lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), s)
-
-################################
-#Grabs tags and returns as list: *improve checking method so only needed values are checked; maybe make counter to show how many are filtered out
-
-#make id3v2 output to hidden file for line reading and (possibly) easier parsing?
-#can change to eliminate dependency on proper formating? - do with (fuzzy?) regex search
-#migrate to class when built
-def getdata(song, verb=1):
-	data = songclass.song(song)
-
-	if verb >= 3:														#verbosity
-		print("Metadata for", split(song)[1] + ':',
-			 "\n Title:", data.title,
-			 "\n Author:", data.author,
-			 "\n Album:", data.album,
-			 "\n Genre:", data.genre)
-
-	return data.title, data.author, data.album, data.genre
-
-#############################################
-#Checks to see if song has existing metadata (WIP):
-
-#def datachecker(files, srcdir=source):
-#	data = ""
-#
-#	for song in files:
-#		data = getdata(join(srcdir, song))
-#
-#	return data
 
 ######################################################################################################
 #Script behavior:
@@ -243,7 +129,7 @@ if __name__ == "__main__":
 	else:						#*needs way to validate specified songs given as args too?
 		i = 0
 		while i < numsongs:
-			if getdata(songs[i], verb=1) == 0:
+			if secondary.getdata(songs[i], verb=1) == 0:
 				songs.remove(songs[i])
 				i -= 1
 				numsongs -= 1

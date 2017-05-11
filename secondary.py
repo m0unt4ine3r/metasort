@@ -1,4 +1,4 @@
-import songclass, secondary
+import songclass
 from os import chdir, environ, getcwd
 from glob import glob
 from subprocess import call, DEVNULL, check_output

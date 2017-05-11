@@ -4,6 +4,7 @@
 
 #Additions:
 #Still needs to check if the 4 tags are already there, if not then skip; needs part to add original auth; add file input capability; add option to sort into genre dirs; add option to specify dir to sort to; maybe add file recursion; add select ability to select amount at a time; have sorter check thru artist string for '&' as a cutoff; add title parser for metachange to reduce tedium 
+#maybe add driver for audacity or some other conversion tool and a pipeline for it into the script
 
 #Notes to self:
 #Specifying songs doesnt work properly
@@ -13,7 +14,7 @@
 ######################################################################################################
 #Imports and globals
 
-import re, argparse
+import re, argparse, songclass
 from os import chdir, environ, getcwd
 from glob import glob
 from subprocess import call, DEVNULL, check_output
@@ -30,6 +31,7 @@ dest=join(environ['HOME'], "Music")
 ############################# 
 #Quasi-interactive id3v2 CLI: *maybe add code for filename parsing here
 
+#make input one line w/ delim
 def metachange(files, numfiles, specific=False, target=source, verb=1):
 	if specific:													#for manual file input
 		num = numfiles[0]
@@ -37,30 +39,36 @@ def metachange(files, numfiles, specific=False, target=source, verb=1):
 	else:
 		num = 1
 
-	chdir(target)
+	chdir(target)																				  #change back to original directory when done for convenience?
 
+	data = []
+	string = ""
 	for song in files:
 #		call("clear")
-		print("Enter the metadata for: {} below ({}/{}):".format(song, num, numfiles))
-
-		title=""
-		while title == "":
-			title = capitalize(input("Title: "))
-			if title == "":
-				print("Title cannot be blank!")
-		artist = capitalize(input("Artist: "))
-		if artist == "":
-			artist = "Unknown"
-		genre = capitalize(input("Genre: "))
-		if genre == "":
-			genre = "Unknown"
-		album = capitalize(input("Album: "))
-		if album == "":
-			album = "Unknown"
+		print("Enter the metadata for {} below ({}/{}) (Format: title/album/artist/genre; leave blank to continue):".format(song, num, numfiles))
+		
+		for frame in getdata(song):
+			data.append(frame)
+		
+		print("Current frames: {}/{}/{}/{}".format(data[0], data[1], data[2], data[3]))
+		
+		#loop here for input confirmation (maybe)
+		newdata = input("New frames: ")
+		string = ""
+		count = 0
+			
+		for char in newdata:
+			if char == '/':
+				data[count] = string
+				count += 1
+				string = ""
+			else:
+				string += char
 		
 		#needs revision for cases where tags exist; also make tag wipe optional
-		call(["id3v2", '-D', song])
-		call(["id3v2", '-t', title, '-a', artist, '-g', genre, '-A', album, song])
+		# call(["id3v2", '-D', song])
+		call(["id3v2", '-t', data[0], '-A', data[1], '-a', data[2], '-g', data[3], song])
+		data = []
 		num += 1
 
 #######################
@@ -102,39 +110,25 @@ def metasort(files, numfiles, specific=False, srcdir=source, destdir=dest, verb=
 #For more reliable title capitalization:
 
 def capitalize(s):
-	return re.sub(r"[A-Za-z]+('[A-Za-z]+)?", 
-				lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), s)
+	return re.sub(r"[A-Za-z]+('[A-Za-z]+)?", lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), s)
 
 ################################
 #Grabs tags and returns as list: *improve checking method so only needed values are checked; maybe make counter to show how many are filtered out
 
+#make id3v2 output to hidden file for line reading and (possibly) easier parsing?
+#can change to eliminate dependency on proper formating? - do with (fuzzy?) regex search
+#migrate to class when built
 def getdata(song, verb=1):
-	output = decode(check_output(["id3v2", '-R', song]))			#might need to change
-	data = []
-	count = 1
+	data = songclass.song(song)
 
-	for char in output:									#compare to list-dl's imp of parser
-		if char == ':':
-			i = count+1
-			temp = output[i]
-			while output[i+1] != '\n':
-				i += 1
-				temp += output[i]
-			data.append(temp)
-		count += 1
+	if verb >= 3:														#verbosity
+		print("Metadata for", split(song)[1] + ':',
+			 "\n Title:", data.title,
+			 "\n Author:", data.author,
+			 "\n Album:", data.album,
+			 "\n Genre:", data.genre)
 
-	if len(data) >= 5:
-		if verb >= 3:														#verbosity
-			print("Metadata for", split(song)[1] + ':',
-				 "\n	Title:", data[1],
-				 "\n	Author:", data[2],
-				 "\n	Album:", data[4],
-				 "\n	Genre:", data[3])
-
-		return data[1], data[2], data[3], data[4]
-
-	else:
-		return 0
+	return data.title, data.author, data.album, data.genre
 
 #############################################
 #Checks to see if song has existing metadata (WIP):

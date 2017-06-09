@@ -5,6 +5,7 @@
 #Additions:
 #Still needs to check if the 4 tags are already there, if not then skip; needs part to add original auth; add file input capability; add option to sort into genre dirs; add option to specify dir to sort to; maybe add file recursion; add select ability to select amount at a time; have sorter check thru artist string for '&' as a cutoff; add title parser for metachange to reduce tedium 
 #maybe add driver for audacity or some other conversion tool and a pipeline for it into the script
+#graceful keyboard int - from changer, sort files that were iterated over
 
 #Notes to self:
 #Specifying songs doesnt work properly
@@ -44,7 +45,6 @@ if __name__ == "__main__":
 	group.add_argument('-a', '--changeandsort', action="store_true", default=False, help="runs metadat changer, sorts files, and exits")
 	group.add_argument('-c', '--changeonly', action="store_true", default=False, help="runs metadata changer and exits")
 	group.add_argument('-n', '--numunsorted', action="store_true", default=False, help="counts files and exits")
-	group.add_argument('-D', '--debug', action="store_true", default=False, help="for testing purposes") 
 
 	#Or args:
 #	parser.add_argument('-l', metavar="list.txt", help="input from list")			#no list io yet
@@ -83,10 +83,6 @@ if __name__ == "__main__":
 			if not isdir(dest):
 				sys.exit("Directory does not exist: {}".format(dest))
 
-	#Handling Xors: *not really necessary
-#	changensort = args.changeandsort
-#	changeonly = args.changeonly
-
 	#Setting environ/variables
 	chdir(source)
 	songs = glob("*.mp3")
@@ -101,7 +97,7 @@ if __name__ == "__main__":
 
 	##For full processing:					*needs way to validate specified songs given as args
 	if args.changeandsort:										#validation for changensort
-		if args.songs != []:#for full processing of specific files *consider making into a function
+		if args.songs != []:#for full processing of specific files *consider making into a function *fix?
 			snum = 1			
 			for elem in args.songs:
 				altsrc = split(join(environ['PWD'], elem))[0]
@@ -110,30 +106,17 @@ if __name__ == "__main__":
 				snum += 1
 
 		else:
-			metachange(songs, numsongs, specific=False, target=source, verb=verbosity)
-			metasort(songs, numsongs, specific=False, srcdir=source, destdir=dest, verb=verbosity)
+			processed = metachange(songs, numsongs, specific=False, target=source, verb=verbosity)
+			metasort(processed[0], processed[1], specific=False, srcdir=source, destdir=dest, verb=verbosity)
 
 	#Only change:
-#	elif args.changeonly:
-#		print("C only")
+	elif args.changeonly:
+		metachange(processed = metachange(songs, numsongs, specific=False, target=source, verb=verbosity))
 
 	#Only return amount:
 	elif args.numunsorted:
 		print("Number of songs in default source ({}): {}.".format(split(source)[1], numsongs))
 
-	#Debugging/Testing new functions:
-	elif args.debug:
-		print(datachecker(songs))
-
 	#Sort:
 	else:						#*needs way to validate specified songs given as args too?
-		#i = 0
-		# while i < numsongs:
-		#      songclass.song(songfile=songs[i])
-		#      if songclass.readframes(songs[i], verb=1) == 0:
-		#           songs.remove(songs[i])
-		#           i -= 1
-		#           numsongs -= 1
-		#      i += 1
-
 		metasort(songs, numsongs, specific=False, srcdir=source, destdir=dest, verb=verbosity)

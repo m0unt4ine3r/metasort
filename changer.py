@@ -10,41 +10,67 @@ from os.path import exists, isdir, isfile, join, split
 
 #make input one line w/ delim
 def metachange(files, numfiles, specific=False, target="", verb=1):
-	if specific:													#for manual file input
+	if specific:							#for manual file input
 		num = numfiles[0]
 		numfiles = numfiles[1]
 	else:
 		num = 1
-	
-	chdir(target)																			    #change back to original directory when done for convenience?
-	
+
+	chdir(target)							#change back to original directory when done for convenience?
+
 	for song in files:
-#		call("clear")
+		#		call("clear")
 		print("Enter the metadata for {} below ({}/{}) (Format: title/album/artist/genre; leave blank to continue):".format(song, num, numfiles))
-		
-		#make while loop here for input safety net
-		newdata = input("New frames: ")
-		
-		data = secondary.getdata(song)
-		print("Current frames: {}/{}/{}/{}".format(data[1], data[1], data[2], data[3]))
-		
-		newdata = input("New frames: ")
+
+		temp = ""
 		string = ""
-		count = 0
-		
-		for char in newdata:
-			if char == '/':
-				data[count] = string
-				count += 1
-				string = ""
+		newdata = ["", "", "", ""]
+		data = songclass.song(songfile=song)
+
+		#Loop to change frames
+		while True:
+			print("Original frames: {}/{}/{}/{}".format(data.title, data.album, data.author, data.genre))
+
+			temp = input("New frames: ")
+			string = ""
+			count = 0
+
+			for char in temp:
+				if char == '/':
+					count += 1
+
+			if temp == "":
+				break
+
+			elif count != 3:	 #change to exception
+				print("Please use format: title/album/artist/genre.")
+				continue
+
 			else:
-				string += char
-		
-		#needs revision for cases where tags exist; also make tag wipe optional
+				count = 0
+				for char in temp:
+					if char == '/':
+					#make new var for new (but unconfirmed frames)
+						newdata[count] = string
+						count += 1
+						string = ""
+					else:
+						string += char
+
+					newdata[count] = string
+
+			print("Current frames: {}/{}/{}/{}".format(newdata[0], newdata[1], newdata[2], newdata[3]))
+
+		#needs revision for cases where tags exist; also make tag wipe optional - is tag wipe needed?
 		# call(["id3v2", '-D', song])
-		call(["id3v2", '-t', title, '-a', artist, '-g', genre, '-A', album, song])
+		data.changetitle(newdata[0])
+		data.changealbum(newdata[1])
+		data.changeauthor(newdata[2])
+		data.changegenre(newdata[3])
+		data.writeall()
+
 		num += 1
-		
+
 		# Friendlier interface
 		# title=""
 		# while title == "":
@@ -60,4 +86,4 @@ def metachange(files, numfiles, specific=False, target="", verb=1):
 		# album = secondary.capitalize(input("Album: "))
 		# if album == "":
 		#	  album = "Unknown"
-		
+

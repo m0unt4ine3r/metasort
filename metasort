@@ -127,55 +127,13 @@ if __name__ == "__main__":
 
 	#Sort:
 	else:						#*needs way to validate specified songs given as args too?
-		i = 0
-		while i < numsongs:
-			if secondary.getdata(songs[i], verb=1) == 0:
-				songs.remove(songs[i])
-				i -= 1
-				numsongs -= 1
-			i += 1
+		#i = 0
+		# while i < numsongs:
+		#      songclass.song(songfile=songs[i])
+		#      if songclass.readframes(songs[i], verb=1) == 0:
+		#           songs.remove(songs[i])
+		#           i -= 1
+		#           numsongs -= 1
+		#      i += 1
 
 		metasort(songs, numsongs, specific=False, srcdir=source, destdir=dest, verb=verbosity)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

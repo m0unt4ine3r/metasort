@@ -19,9 +19,9 @@ def metasort(files, numfiles, specific=False, srcdir="", destdir="", verb=1):
 
 #	call("clear")
 	for song in files:
-		data = secondary.getdata(join(srcdir, song), verb=verb)
-		path = join(data[1], data[3])
-		title = data[0] + ".mp3"
+		data = songclass.song(join(srcdir, song), verb=verb)
+		path = join(data.author, data.album)
+		title = data.title + ".mp3"
 
 		if verb >= 2:														#verbosity
 			print("Copying {} as {} to {} ({}/{})...".format(song, title, path, num, numfiles))
@@ -32,8 +32,10 @@ def metasort(files, numfiles, specific=False, srcdir="", destdir="", verb=1):
 
 	if verb >= 1:															#verbosity
 		print("Done sorting {} file(s).".format(numfiles))
-	fin = input("Delete originals now? [y/N]: ")
+
+	fin = input("Delete originals now? [y/N]: ").lower() 
+		
 	if fin == "y":
 		for song in files:
-			call(["rm", join(split(srcdir)[1], song)])					
+			call(["rm", join(split(srcdir)[1], song)])
 

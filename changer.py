@@ -20,16 +20,17 @@ def metachange(files, numfiles, specific=False, target="", verb=1):
 
 	for song in files:
 		#		call("clear")
-		print("Enter the metadata for {} below ({}/{}) (Format: title/album/artist/genre; leave blank to continue):".format(song, num, numfiles))
+		print("({}/{}) Enter the metadata for {} below (Format: [title]/[album]/[artist]/[genre]; leave blank to continue):".format(num, numfiles, song))
 
+		data = songclass.song(songfile=song)
 		temp = ""
 		string = ""
 		newdata = ["", "", "", ""]
-		data = songclass.song(songfile=song)
+		original = [data.title, data.album, data.author, data.genre]
 
 		#Loop to change frames
 		while True:
-			print("Original frames: {}/{}/{}/{}".format(data.title, data.album, data.author, data.genre))
+			print("Original frames: {}/{}/{}/{}".format(original[0], original[1], original[2], original[3]))
 
 			temp = input("New frames: ")
 			string = ""
@@ -50,24 +51,30 @@ def metachange(files, numfiles, specific=False, target="", verb=1):
 				count = 0
 				for char in temp:
 					if char == '/':
-					#make new var for new (but unconfirmed frames)
-						newdata[count] = string
+						if string == "":
+							newdata[count] = original[count]
+						else:
+							newdata[count] = string
 						count += 1
 						string = ""
 					else:
 						string += char
 
+				if string == "":
+					if newdata[count] == "":
+						newdata[count] = original[count]
+					else:
+						newdata[count] = newdata[count]
+				else:
 					newdata[count] = string
 
-			print("Current frames: {}/{}/{}/{}".format(newdata[0], newdata[1], newdata[2], newdata[3]))
+				data.changetitle(newdata[0])
+				data.changealbum(newdata[1])
+				data.changeauthor(newdata[2])
+				data.changegenre(newdata[3])
+				data.writeall()
 
-		#needs revision for cases where tags exist; also make tag wipe optional - is tag wipe needed?
-		# call(["id3v2", '-D', song])
-		data.changetitle(newdata[0])
-		data.changealbum(newdata[1])
-		data.changeauthor(newdata[2])
-		data.changegenre(newdata[3])
-		data.writeall()
+			print("\nCurrent frames: {}/{}/{}/{}".format(newdata[0], newdata[1], newdata[2], newdata[3]))
 
 		num += 1
 

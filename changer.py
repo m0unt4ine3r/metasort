@@ -18,79 +18,89 @@ def metachange(files, numfiles, specific=False, target="", verb=1):
 
 	chdir(target)							#change back to original directory when done for convenience?
 
-	for song in files:
-		#		call("clear")
-		print("({}/{}) Enter the metadata for {} below (Format: [title]/[album]/[artist]/[genre]; leave blank to continue):".format(num, numfiles, song))
+	processed = []
 
-		data = songclass.song(songfile=song)
-		temp = ""
-		string = ""
-		newdata = ["", "", "", ""]
-		original = [data.title, data.album, data.author, data.genre]
+	try:
+		for song in files:
+			#		call("clear")
+			print("({}/{}) Enter the metadata for {} below (Format: [title]/[album]/[artist]/[genre]; leave blank to continue):".format(num, numfiles, song))
 
-		#Loop to change frames
-		while True:
-			print("Original frames: {}/{}/{}/{}".format(original[0], original[1], original[2], original[3]))
-
-			temp = input("New frames: ")
+			data = songclass.song(songfile=song)
+			temp = ""
 			string = ""
-			count = 0
+			newdata = ["", "", "", ""]
+			original = [data.title, data.album, data.author, data.genre]
 
-			for char in temp:
-				if char == '/':
-					count += 1
+			#Loop to change frames
+			while True:
+				print("Original frames: {}/{}/{}/{}".format(original[0], original[1], original[2], original[3]))
 
-			if temp == "":
-				break
-
-			elif count != 3:	 #change to exception
-				print("Please use format: title/album/artist/genre.")
-				continue
-
-			else:
+				temp = input("New frames: ")
+				string = ""
 				count = 0
+
 				for char in temp:
 					if char == '/':
-						if string == "":
+						count += 1
+
+				if temp == "":
+					processed.append(song)
+					break
+
+				elif count != 3:	 #change to exception?
+					print("Please use format: title/album/artist/genre.")
+					continue
+
+				else:
+					count = 0
+					for char in temp:
+						if char == '/':
+							if string == "":
+								newdata[count] = original[count]
+							else:
+								newdata[count] = string
+							count += 1
+							string = ""
+						else:
+							string += char
+
+					if string == "":
+						if newdata[count] == "":
 							newdata[count] = original[count]
 						else:
-							newdata[count] = string
-						count += 1
-						string = ""
+							newdata[count] = newdata[count]
 					else:
-						string += char
+						newdata[count] = string
 
-				if string == "":
-					if newdata[count] == "":
-						newdata[count] = original[count]
-					else:
-						newdata[count] = newdata[count]
-				else:
-					newdata[count] = string
+					data.changetitle(newdata[0])
+					data.changealbum(newdata[1])
+					data.changeauthor(newdata[2])
+					data.changegenre(newdata[3])
+					data.writeall()
 
-				data.changetitle(newdata[0])
-				data.changealbum(newdata[1])
-				data.changeauthor(newdata[2])
-				data.changegenre(newdata[3])
-				data.writeall()
+				print("\nCurrent frames: {}/{}/{}/{}".format(newdata[0], newdata[1], newdata[2], newdata[3]))
 
-			print("\nCurrent frames: {}/{}/{}/{}".format(newdata[0], newdata[1], newdata[2], newdata[3]))
+			num += 1
 
-		num += 1
+		return processed, num
 
-		# Friendlier interface
-		# title=""
-		# while title == "":
-		#	  title = secondary.capitalize(input("Title: "))
-		#	  if title == "":
-		#		  print("Title cannot be blank!")
-		# artist = secondary.capitalize(input("Artist: "))
-		# if artist == "":
-		#	  artist = "Unknown"
-		# genre = secondary.capitalize(input("Genre: "))
-		# if genre == "":
-		#	  genre = "Unknown"
-		# album = secondary.capitalize(input("Album: "))
-		# if album == "":
-		#	  album = "Unknown"
+	except KeyboardInterrupt:
+		print('\n')
+		return processed, num-1
+
+			# Friendlier interface
+			# title=""
+			# while title == "":
+			#	  title = secondary.capitalize(input("Title: "))
+			#	  if title == "":
+			#		  print("Title cannot be blank!")
+			# artist = secondary.capitalize(input("Artist: "))
+			# if artist == "":
+			#	  artist = "Unknown"
+			# genre = secondary.capitalize(input("Genre: "))
+			# if genre == "":
+			#	  genre = "Unknown"
+			# album = secondary.capitalize(input("Album: "))
+			# if album == "":
+			#	  album = "Unknown"
 
